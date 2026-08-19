@@ -11,7 +11,6 @@ does not change during the presentation.
 from __future__ import annotations
 
 import json
-import pickle
 from pathlib import Path
 
 import joblib
@@ -32,6 +31,7 @@ RESULT_DIR = ROOT / "Data of Ship Block Scheduling in English" / "Result"
 PRECOMPUTED_DIR = ROOT / "precomputed"
 CHART_DIR = PRECOMPUTED_DIR / "charts"
 RESULT_CACHE_DIR = PRECOMPUTED_DIR / "scheduling_results"
+TABLE_DIR = PRECOMPUTED_DIR / "tables"
 
 SCHEDULING_METHODS = [
     "DDQN",
@@ -107,6 +107,24 @@ def save_figure(fig: plt.Figure, name: str, dpi: int = 180) -> None:
     plt.close(fig)
 
 
+def portable_table_path(name: str) -> Path:
+    """Use JSON-table files rather than pandas pickles for runtime portability."""
+    safe_name = name.replace(" ", "_").replace("/", "_")
+    return TABLE_DIR / f"{safe_name}.json"
+
+
+def write_portable_table(name: str, frame: pd.DataFrame) -> None:
+    """Serialize a DataFrame without binding it to a pandas/NumPy pickle ABI."""
+    portable_frame = frame.rename_axis("method").reset_index() if name == "match" else frame
+    portable_frame.to_json(
+        portable_table_path(name),
+        orient="table",
+        date_format="iso",
+        force_ascii=False,
+        index=False,
+    )
+
+
 def load_app_data() -> dict:
     detail = pd.read_csv(SCHEDULE_DIR / "4_schedule_detail.csv")
     for column in ["planned_start_time", "planned_finish_time", "latest_completion_time"]:
@@ -139,27 +157,51 @@ def load_app_data() -> dict:
 
 
 def build_fast_data_files(data: dict) -> None:
-    with open(PRECOMPUTED_DIR / "app_data.pkl", "wb") as file:
-        pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+    # JSON table artifacts are intentionally the primary runtime format.  Pandas
+    # pickles contain internal NumPy datetime objects and can fail when a cloud
+    # runtime uses a different Python/NumPy build than the build machine.
+    app_table_names = [
+        "master", "analysis", "positions", "feature_sets", "baseline", "models",
+        "importance", "test", "delay", "schedule", "position", "area_share", "match", "detail",
+    ]
+    for name in app_table_names:
+        write_portable_table(name, data[name])
+    (TABLE_DIR / "app_data_manifest.json").write_text(
+        json.dumps(
+            {"schema_version": data["schema_version"], "tables": app_table_names},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (PRECOMPUTED_DIR / "modeling_summary.json").write_text(
+        json.dumps(data["modeling_summary"], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
     raw_tables = {
         "block": pd.read_excel(RAW_INPUT_DIR / "block_information_table.xlsx"),
         "position": pd.read_excel(RAW_INPUT_DIR / "block_position_information.xlsx"),
         "initial": pd.read_excel(RAW_INPUT_DIR / "initial_block_position_information.xlsx"),
     }
-    with open(PRECOMPUTED_DIR / "raw_input_tables.pkl", "wb") as file:
-        pickle.dump(raw_tables, file, protocol=pickle.HIGHEST_PROTOCOL)
+    raw_table_names = []
+    for name, frame in raw_tables.items():
+        table_name = f"raw_{name}"
+        write_portable_table(table_name, frame)
+        raw_table_names.append(table_name)
+    (TABLE_DIR / "raw_input_manifest.json").write_text(
+        json.dumps({"tables": raw_table_names}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
     for method, filename in RESULT_FILES.items():
         frame = pd.read_excel(RESULT_DIR / filename)
-        frame.to_pickle(RESULT_CACHE_DIR / f"{method}.pkl")
+        write_portable_table(f"result_{method}", frame)
         scheduled = pd.read_excel(RESULT_DIR / filename, sheet_name="Scheduled Segments")
-        scheduled.to_pickle(RESULT_CACHE_DIR / f"{method}_scheduled.pkl")
+        write_portable_table(f"scheduled_{method}", scheduled)
 
     data["models"].to_csv(PRECOMPUTED_DIR / "model_metrics.csv", index=False, encoding="utf-8-sig")
     data["importance"].to_csv(PRECOMPUTED_DIR / "feature_importance.csv", index=False, encoding="utf-8-sig")
-    data["detail"].to_pickle(PRECOMPUTED_DIR / "scheduling_results.pkl")
-
     analysis = data["analysis"]
     target = analysis["block_processing_cycle"]
     schedule = data["schedule"].sort_values("Makespan_Days")
@@ -350,6 +392,7 @@ def main() -> None:
     PRECOMPUTED_DIR.mkdir(exist_ok=True)
     CHART_DIR.mkdir(exist_ok=True)
     RESULT_CACHE_DIR.mkdir(exist_ok=True)
+    TABLE_DIR.mkdir(exist_ok=True)
     configure_plot_style()
     data = load_app_data()
     build_fast_data_files(data)

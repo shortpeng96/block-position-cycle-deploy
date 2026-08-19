@@ -29,6 +29,7 @@ MODEL_DIR = ROOT / "outputs" / "3_modeling"
 SCHEDULE_DIR = ROOT / "outputs" / "4_scheduling_comparison"
 PRECOMPUTED_DIR = ROOT / "precomputed"
 PRECOMPUTED_CHART_DIR = PRECOMPUTED_DIR / "charts"
+PRECOMPUTED_TABLE_DIR = PRECOMPUTED_DIR / "tables"
 LOGO_PATH = ROOT / "Docs" / "images" / "samsung_heavy_industries_logo.png"
 DATASET_STRUCTURE_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_structure_flow_infographic_v2.png"
 DATASET_SELECTION_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_selection_infographic.png"
@@ -775,12 +776,41 @@ st.markdown(
 )
 
 
+def precomputed_table_path(name):
+    """Return a portable JSON table path for a named precomputed result."""
+    safe_name = name.replace(" ", "_").replace("/", "_")
+    return PRECOMPUTED_TABLE_DIR / f"{safe_name}.json"
+
+
+def read_precomputed_table(name):
+    frame = pd.read_json(precomputed_table_path(name), orient="table")
+    if name == "match":
+        return frame.set_index("method")
+    return frame
+
+
 @st.cache_resource(show_spinner=False)
 def load_data():
+    manifest_path = PRECOMPUTED_TABLE_DIR / "app_data_manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data = {name: read_precomputed_table(name) for name in manifest["tables"]}
+        data["schema_version"] = manifest["schema_version"]
+        data["modeling_summary"] = json.loads(
+            (PRECOMPUTED_DIR / "modeling_summary.json").read_text(encoding="utf-8")
+        )
+        return data
+
+    # Legacy pickle artifacts are retained only for local backwards compatibility.
+    # Cloud deployments always prefer the JSON tables above because pandas pickle
+    # internals can differ between build and runtime images.
     precomputed_path = PRECOMPUTED_DIR / "app_data.pkl"
     if precomputed_path.exists():
-        with open(precomputed_path, "rb") as file:
-            return pickle.load(file)
+        try:
+            with open(precomputed_path, "rb") as file:
+                return pickle.load(file)
+        except (AttributeError, EOFError, ImportError, TypeError, ValueError):
+            pass
     schema_version = "logic_revision_2026_08_18"
     detail = pd.read_csv(SCHEDULE_DIR / "4_schedule_detail.csv")
     for column in ["planned_start_time", "planned_finish_time", "latest_completion_time"]:
@@ -809,10 +839,21 @@ def load_data():
 
 @st.cache_resource(show_spinner=False)
 def load_raw_input_tables():
+    raw_manifest_path = PRECOMPUTED_TABLE_DIR / "raw_input_manifest.json"
+    if raw_manifest_path.exists():
+        manifest = json.loads(raw_manifest_path.read_text(encoding="utf-8"))
+        return {
+            name.removeprefix("raw_"): read_precomputed_table(name)
+            for name in manifest["tables"]
+        }
+
     precomputed_path = PRECOMPUTED_DIR / "raw_input_tables.pkl"
     if precomputed_path.exists():
-        with open(precomputed_path, "rb") as file:
-            return pickle.load(file)
+        try:
+            with open(precomputed_path, "rb") as file:
+                return pickle.load(file)
+        except (AttributeError, EOFError, ImportError, TypeError, ValueError):
+            pass
     return {
         "block": pd.read_excel(RAW_INPUT_DIR / "block_information_table.xlsx"),
         "position": pd.read_excel(RAW_INPUT_DIR / "block_position_information.xlsx"),
@@ -822,9 +863,16 @@ def load_raw_input_tables():
 
 @st.cache_resource(show_spinner=False)
 def load_scheduling_result_table(method):
+    portable_path = precomputed_table_path(f"result_{method}")
+    if portable_path.exists():
+        return pd.read_json(portable_path, orient="table")
+
     precomputed_path = PRECOMPUTED_DIR / "scheduling_results" / f"{method}.pkl"
     if precomputed_path.exists():
-        return pd.read_pickle(precomputed_path)
+        try:
+            return pd.read_pickle(precomputed_path)
+        except (AttributeError, EOFError, ImportError, TypeError, ValueError):
+            pass
     return pd.read_excel(RESULT_DIR / RESULT_FILES[method])
 
 
@@ -914,7 +962,11 @@ def sync_profile(profile, catalog, keys, marker):
         return
     for column, key in keys.items():
         value = profile[column]
-        st.session_state[key] = str(value) if catalog[column].dtype == "object" else float(value)
+        st.session_state[key] = (
+            float(value)
+            if pd.api.types.is_numeric_dtype(catalog[column])
+            else str(value)
+        )
     st.session_state[marker] = profile.name
 
 
@@ -2581,12 +2633,18 @@ def build_block_isometric(block):
 
 @st.cache_resource(show_spinner=False)
 def load_schedule_result(method):
-    precomputed_path = PRECOMPUTED_DIR / "scheduling_results" / f"{method}_scheduled.pkl"
-    schedule = (
-        pd.read_pickle(precomputed_path)
-        if precomputed_path.exists()
-        else pd.read_excel(RESULT_DIR / RESULT_FILES[method], sheet_name="Scheduled Segments")
-    )
+    portable_path = precomputed_table_path(f"scheduled_{method}")
+    if portable_path.exists():
+        schedule = pd.read_json(portable_path, orient="table")
+    else:
+        precomputed_path = PRECOMPUTED_DIR / "scheduling_results" / f"{method}_scheduled.pkl"
+        if precomputed_path.exists():
+            try:
+                schedule = pd.read_pickle(precomputed_path)
+            except (AttributeError, EOFError, ImportError, TypeError, ValueError):
+                schedule = pd.read_excel(RESULT_DIR / RESULT_FILES[method], sheet_name="Scheduled Segments")
+        else:
+            schedule = pd.read_excel(RESULT_DIR / RESULT_FILES[method], sheet_name="Scheduled Segments")
     schedule["planned start time"] = pd.to_datetime(schedule["planned start time"], errors="coerce")
     schedule["planned finish time"] = pd.to_datetime(schedule["planned finish time"], errors="coerce")
     return schedule.dropna(subset=["planned start time", "planned finish time"])

@@ -1,0 +1,7 @@
+{
+  "tables": [
+    "raw_block",
+    "raw_position",
+    "raw_initial"
+  ]
+}

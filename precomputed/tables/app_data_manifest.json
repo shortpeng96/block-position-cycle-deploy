@@ -1,0 +1,19 @@
+{
+  "schema_version": "precomputed_2026_08_19_v1",
+  "tables": [
+    "master",
+    "analysis",
+    "positions",
+    "feature_sets",
+    "baseline",
+    "models",
+    "importance",
+    "test",
+    "delay",
+    "schedule",
+    "position",
+    "area_share",
+    "match",
+    "detail"
+  ]
+}
