@@ -1,0 +1,39 @@
+{
+  "schema_version": "precomputed_2026_08_19_v1",
+  "chart_files": [
+    "eda_categorical_distribution.png",
+    "eda_numeric_correlation.png",
+    "eda_outliers.png",
+    "eda_target_distribution.png",
+    "feature_importance_10.png",
+    "feature_importance_11.png",
+    "feature_importance_12.png",
+    "feature_importance_13.png",
+    "feature_importance_14.png",
+    "feature_importance_15.png",
+    "feature_importance_16.png",
+    "feature_importance_17.png",
+    "feature_importance_18.png",
+    "feature_importance_19.png",
+    "feature_importance_20.png",
+    "feature_importance_5.png",
+    "feature_importance_6.png",
+    "feature_importance_7.png",
+    "feature_importance_8.png",
+    "feature_importance_9.png",
+    "regression_feature_set_rmse.png",
+    "regression_prediction_result.png",
+    "regression_residuals.png",
+    "scheduling_operating_performance.png",
+    "scheduling_position_comparison.png"
+  ],
+  "scheduling_methods": [
+    "DDQN",
+    "EDDQN",
+    "Earliest Start",
+    "Longest Processing",
+    "Resource Utilization",
+    "Response Time",
+    "Shortest Processing"
+  ]
+}

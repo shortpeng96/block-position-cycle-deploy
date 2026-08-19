@@ -1,0 +1,41 @@
+{
+  "records": 872,
+  "target_median": 25.0,
+  "target_mean": 26.93004587155963,
+  "target_min": 8.0,
+  "target_max": 72.0,
+  "test_metrics": {
+    "MAE": 3.0021676190476194,
+    "RMSE": 4.5578226968447355,
+    "R2": 0.7670384757252314
+  },
+  "best_makespan": {
+    "Method": "EDDQN",
+    "Schedule_Start": "2018-02-24",
+    "Schedule_Finish": "2022-05-03",
+    "Makespan_Days": 1529,
+    "Mean_Planned_Duration": 25.93004587155963,
+    "Used_Positions": 60,
+    "Busiest_Position_Assignments": 46
+  },
+  "best_total_delay": {
+    "Method": "Earliest Start",
+    "Total_Delay": 57827,
+    "Mean_Delay_per_Block": 66.31536697247707,
+    "Mean_Delay_among_Delayed": 124.8963282937365,
+    "Delayed_Blocks": 463,
+    "Delay_Rate": 0.5309633027522935,
+    "Max_Delay": 1145,
+    "On_Time_or_Early_Blocks": 409
+  },
+  "best_max_delay": {
+    "Method": "EDDQN",
+    "Total_Delay": 66209,
+    "Mean_Delay_per_Block": 75.92775229357798,
+    "Mean_Delay_among_Delayed": 137.07867494824018,
+    "Delayed_Blocks": 483,
+    "Delay_Rate": 0.5538990825688074,
+    "Max_Delay": 1096,
+    "On_Time_or_Early_Blocks": 389
+  }
+}

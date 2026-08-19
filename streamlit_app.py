@@ -1,6 +1,7 @@
 import base64
 import json
 import math
+import pickle
 import re
 import html
 from io import BytesIO
@@ -26,6 +27,8 @@ RESULT_DIR = ROOT / "Data of Ship Block Scheduling in English" / "Result"
 RAW_INPUT_DIR = ROOT / "Data of Ship Block Scheduling in English" / "Raw_input_ Data"
 MODEL_DIR = ROOT / "outputs" / "3_modeling"
 SCHEDULE_DIR = ROOT / "outputs" / "4_scheduling_comparison"
+PRECOMPUTED_DIR = ROOT / "precomputed"
+PRECOMPUTED_CHART_DIR = PRECOMPUTED_DIR / "charts"
 LOGO_PATH = ROOT / "Docs" / "images" / "samsung_heavy_industries_logo.png"
 DATASET_STRUCTURE_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_structure_flow_infographic_v2.png"
 DATASET_SELECTION_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_selection_infographic.png"
@@ -772,8 +775,12 @@ st.markdown(
 )
 
 
-@st.cache_data
+@st.cache_resource(show_spinner=False)
 def load_data():
+    precomputed_path = PRECOMPUTED_DIR / "app_data.pkl"
+    if precomputed_path.exists():
+        with open(precomputed_path, "rb") as file:
+            return pickle.load(file)
     schema_version = "logic_revision_2026_08_18"
     detail = pd.read_csv(SCHEDULE_DIR / "4_schedule_detail.csv")
     for column in ["planned_start_time", "planned_finish_time", "latest_completion_time"]:
@@ -800,8 +807,12 @@ def load_data():
     }
 
 
-@st.cache_data
+@st.cache_resource(show_spinner=False)
 def load_raw_input_tables():
+    precomputed_path = PRECOMPUTED_DIR / "raw_input_tables.pkl"
+    if precomputed_path.exists():
+        with open(precomputed_path, "rb") as file:
+            return pickle.load(file)
     return {
         "block": pd.read_excel(RAW_INPUT_DIR / "block_information_table.xlsx"),
         "position": pd.read_excel(RAW_INPUT_DIR / "block_position_information.xlsx"),
@@ -809,9 +820,22 @@ def load_raw_input_tables():
     }
 
 
-@st.cache_data
+@st.cache_resource(show_spinner=False)
 def load_scheduling_result_table(method):
+    precomputed_path = PRECOMPUTED_DIR / "scheduling_results" / f"{method}.pkl"
+    if precomputed_path.exists():
+        return pd.read_pickle(precomputed_path)
     return pd.read_excel(RESULT_DIR / RESULT_FILES[method])
+
+
+def render_precomputed_chart(filename, width="stretch"):
+    """Render a build-time chart without running matplotlib during a rerun."""
+    chart_path = PRECOMPUTED_CHART_DIR / filename
+    if not chart_path.exists():
+        raise FileNotFoundError(
+            f"{chart_path} is missing. Run: python scripts/build_precomputed_results.py"
+        )
+    st.image(chart_path, width=width)
 
 
 @st.cache_resource
@@ -955,9 +979,18 @@ def build_cycle_context_chart(frame, selected_block, prediction_name, adjusted_p
             )
         figure.add_vline(x=selected_rank, line={"color": "#A7B3C2", "width": 1, "dash": "dot"})
     if adjusted_prediction is not None:
+        # 가상 Block에는 원본 행의 순위가 없으므로, 기준 Cycle 곡선과
+        # 현재 입력 예측선이 만나는 위치를 보간해 표식의 x축 위치로 사용한다.
+        virtual_rank = float(
+            np.interp(
+                adjusted_prediction,
+                chart_data["block_processing_cycle"].to_numpy(),
+                chart_data.index.to_numpy(),
+            )
+        )
         figure.add_trace(
             go.Scatter(
-                x=[selected_rank],
+                x=[virtual_rank],
                 y=[adjusted_prediction],
                 mode="markers",
                 name="가상 Block 예측",
@@ -1775,49 +1808,7 @@ def render_eda_outliers(data):
     )
     st.dataframe(outlier_table, hide_index=True, width="stretch")
 
-    check_columns = [
-        "block_length",
-        "block_width",
-        "block_start_window",
-        "block_area",
-        "block_processing_cycle",
-    ]
-    fig, axes = plt.subplots(1, len(check_columns), figsize=(15, 3.35))
-    fig.patch.set_facecolor("#FFFFFF")
-    for axis, column in zip(axes, check_columns):
-        sns.boxplot(
-            x=analysis[column].dropna(),
-            ax=axis,
-            color="#8CBCE8",
-            width=0.42,
-            linewidth=1.15,
-            medianprops={"color": "#034EA2", "linewidth": 2.2},
-            whiskerprops={"color": "#58738F", "linewidth": 1.15},
-            capprops={"color": "#58738F", "linewidth": 1.15},
-            flierprops={
-                "marker": "o",
-                "markersize": 4,
-                "markerfacecolor": "#F59E0B",
-                "markeredgecolor": "#FFFFFF",
-                "markeredgewidth": 0.6,
-                "alpha": 0.95,
-            },
-        )
-        axis.set_facecolor("#F8FAFC")
-        axis.set_title(labels[column], fontsize=10.5, fontweight="bold", color="#102A43", pad=11)
-        axis.set_yticks([])
-        axis.set_ylabel("")
-        axis.set_xlabel("")
-        axis.grid(axis="x", color="#DCE6F0", linestyle="--", linewidth=0.8)
-        axis.set_axisbelow(True)
-        axis.tick_params(axis="x", labelsize=8, colors="#52657A", length=0, pad=6)
-        for spine in ["top", "right", "left"]:
-            axis.spines[spine].set_visible(False)
-        axis.spines["bottom"].set_color("#D6E0EA")
-        axis.spines["bottom"].set_linewidth(0.9)
-    fig.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+    render_precomputed_chart("eda_outliers.png")
     st.markdown(
         """
         **소결론**
@@ -1833,17 +1824,7 @@ def render_eda_target_distribution(data):
     analysis = data["analysis"]
     target = analysis["block_processing_cycle"]
     render_eda_heading("종속변수 분포", "예측 대상인 Block Position Cycle의 분포와 장기 Cycle 구간의 표본 특성을 확인했다.")
-    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    sns.histplot(target, kde=True, color="#034EA2", edgecolor="#FFFFFF", linewidth=.5, ax=axes[0])
-    axes[0].set_title("Block Position Cycle Distribution", fontweight="bold")
-    axes[0].set_xlabel("Cycle (일)")
-    axes[0].set_ylabel("Block 수")
-    sns.boxplot(x=target, color="#8CBCE8", width=.42, ax=axes[1])
-    axes[1].set_title("Block Position Cycle Boxplot", fontweight="bold")
-    axes[1].set_xlabel("Cycle (일)")
-    fig.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+    render_precomputed_chart("eda_target_distribution.png")
     analysis_note(
         f"중앙값은 {target.median():.1f}일이며 대부분의 값은 중간 Cycle 구간에 모여 있다. "
         "50일 이상 장기 Cycle도 연속적인 꼬리로 존재한다. Block 크기·형상·작업 조건에 따른 실제 편차일 수 있으므로 이를 제거하면 장기 작업 표본이 사라져 "
@@ -1860,23 +1841,9 @@ def render_eda_numeric_correlation(data):
         "initially_occupied", "block_processing_cycle",
     ]
     render_eda_heading("수치형 변수 상관관계", "Block 물리량·Position 특성·파생변수와 Block Position Cycle의 선형 관계를 함께 확인했다.")
-    # 반응형 그래프 대신 고해상도 PNG로 렌더링해 발표 화면에서도 선명하게 고정한다.
-    fig, ax = plt.subplots(figsize=(7.0, 5.25), dpi=220)
-    heatmap = sns.heatmap(
-        analysis[numeric_columns].corr(), annot=True, fmt=".2f", cmap=CORRELATION_CMAP,
-        vmin=-1, vmax=1, square=True, linewidths=.35, linecolor="#FFFFFF",
-        annot_kws={"size": 7.2}, cbar_kws={"shrink": .78, "aspect": 22, "pad": .035}, ax=ax,
-    )
-    heatmap.collections[0].colorbar.ax.tick_params(labelsize=7, length=2.2, pad=2)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=35, ha="right", fontsize=7)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=7)
-    fig.tight_layout(pad=.8)
-    image_buffer = BytesIO()
-    fig.savefig(image_buffer, format="png", dpi=220, bbox_inches="tight", facecolor="white")
-    image_buffer.seek(0)
     chart_col, interpretation_col = st.columns([1.22, .78], gap="large")
     with chart_col:
-        st.image(image_buffer.getvalue(), width="content")
+        render_precomputed_chart("eda_numeric_correlation.png", width="content")
     with interpretation_col:
         st.markdown("#### 상관관계 해석")
         st.markdown(
@@ -1895,7 +1862,6 @@ def render_eda_numeric_correlation(data):
             "**4. 사전 예측 기준**  \\n"
             "스케줄링 이후 결정되는 Position 관련 변수는 최종 사전 예측용 Set A에서 제외하고 사후 진단에만 활용한다."
         )
-    plt.close(fig)
 
 
 def render_eda_categorical_distribution(data):
@@ -1910,22 +1876,7 @@ def render_eda_categorical_distribution(data):
         "position_attribute": "Position 속성",
     }
     render_eda_heading("범주형 변수별 Cycle 분포", "Block·Position 범주에 따라 Block Position Cycle의 중앙값과 분포 폭이 어떻게 달라지는지 비교했다.")
-    fig, axes = plt.subplots(2, 3, figsize=(13.2, 4.15))
-    for axis, column in zip(axes.flatten(), category_columns):
-        sns.boxplot(data=analysis, x=column, y="block_processing_cycle", color="#8CBCE8", width=.55, fliersize=2.5, ax=axis)
-        axis.set_title(labels[column], fontsize=10, fontweight="bold")
-        axis.set_xlabel("")
-        axis.set_ylabel("Cycle (일)" if column in {"block_ship_no", "position_primary_area"} else "")
-        category_labels = [str(label.get_text()) for label in axis.get_xticklabels()]
-        wrapped_labels = [
-            " ".join(value.split()[:-1]) + "\n" + value.split()[-1] if len(value.split()) > 1 else value
-            for value in category_labels
-        ]
-        axis.set_xticklabels(wrapped_labels, rotation=0, ha="center", fontsize=7.2)
-        axis.grid(axis="y", alpha=.2)
-    fig.tight_layout(pad=.65, h_pad=.85)
-    st.pyplot(fig)
-    plt.close(fig)
+    render_precomputed_chart("eda_categorical_distribution.png")
     st.markdown("#### 변수별 분포 해석")
     categorical_summary = pd.DataFrame(
         [
@@ -2628,9 +2579,14 @@ def build_block_isometric(block):
     return figure
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_schedule_result(method):
-    schedule = pd.read_excel(RESULT_DIR / RESULT_FILES[method], sheet_name="Scheduled Segments")
+    precomputed_path = PRECOMPUTED_DIR / "scheduling_results" / f"{method}_scheduled.pkl"
+    schedule = (
+        pd.read_pickle(precomputed_path)
+        if precomputed_path.exists()
+        else pd.read_excel(RESULT_DIR / RESULT_FILES[method], sheet_name="Scheduled Segments")
+    )
     schedule["planned start time"] = pd.to_datetime(schedule["planned start time"], errors="coerce")
     schedule["planned finish time"] = pd.to_datetime(schedule["planned finish time"], errors="coerce")
     return schedule.dropna(subset=["planned start time", "planned finish time"])
@@ -2708,7 +2664,7 @@ def build_position_gantt(schedule, position_catalog, method, selected_block, gan
     figure.update_layout(
         height=max(360, min(820, len(position_order) * 12 + 150)),
         template="plotly_white",
-        margin={"l": 55, "r": 20, "t": 92, "b": 20},
+        margin={"l": 55, "r": 20, "t": 66, "b": 20},
         showlegend=False,
         xaxis={
             "title": None,
@@ -2737,7 +2693,7 @@ def build_position_gantt(schedule, position_catalog, method, selected_block, gan
     for year_start in pd.DatetimeIndex(year_starts).drop_duplicates():
         figure.add_annotation(
             x=year_start + pd.offsets.Day(14),
-            y=1.10,
+            y=1.045,
             xref="x",
             yref="paper",
             text=f"<b>{year_start.year}</b>",
@@ -2747,7 +2703,7 @@ def build_position_gantt(schedule, position_catalog, method, selected_block, gan
     return figure
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_notebook_sections(notebook_path, split_subsections=False):
     notebook = json.loads(Path(notebook_path).read_text(encoding="utf-8"))
     markdown = "\n\n".join(
@@ -3327,19 +3283,6 @@ def build_yard_gantt(schedule, area):
     return figure, area_schedule
 
 
-try:
-    data = load_data()
-except FileNotFoundError as error:
-    st.error(f"필요한 분석 결과 파일을 찾지 못했습니다: {error.filename}")
-    st.stop()
-
-feature_sets = data["feature_sets"].sort_values("RMSE")
-models = data["models"].sort_values("RMSE")
-delay = data["delay"].sort_values("Total_Delay")
-schedule = data["schedule"].sort_values("Makespan_Days")
-comparison = schedule.merge(delay, on="Method")
-
-
 def render_scheduling_presentation_page(subpage, data):
     """발표용 스케줄링 비교: 구조·조회·배정·운영 성과·결론의 5개 메시지로 재구성한다."""
     if subpage == SCHEDULING_RESULT_STRUCTURE_SUBPAGE:
@@ -3363,22 +3306,7 @@ def render_scheduling_presentation_page(subpage, data):
         st.markdown("<div class='section-kicker'>POSITION ASSIGNMENT</div>", unsafe_allow_html=True)
         st.title("Position 배정 비교")
         st.caption("동일한 Block도 선택 규칙에 따라 서로 다른 Position에 배정되는지 확인합니다.")
-        fig, axes = plt.subplots(1, 2, figsize=(14.8, 6.5), dpi=150, gridspec_kw={"width_ratios": [1.08, 1]})
-        sns.heatmap(data["match"].astype(float), annot=True, fmt=".2f", vmin=0, vmax=1, cmap="Blues", square=True, ax=axes[0])
-        axes[0].set_title("Same Position Selection Rate", pad=14)
-        axes[0].set_xlabel("Scheduling Method")
-        axes[0].set_ylabel("Scheduling Method")
-        area_share = data["area_share"].set_index("method").loc[SCHEDULING_METHODS]
-        area_share.plot(kind="barh", stacked=True, color=["#034EA2", "#6B5AA6", "#2D7D8C"], ax=axes[1])
-        axes[1].set_title("Position Assignment Share by Area", pad=14)
-        axes[1].set_xlabel("Assignment Share")
-        axes[1].set_ylabel("")
-        axes[1].set_xlim(0, 1)
-        axes[1].legend(["블록 조립 구역", "곡면 구역", "플랫폼 구역"], loc="upper center", bbox_to_anchor=(.5, -.17), ncol=3, fontsize=8)
-        fig.tight_layout()
-        fig.subplots_adjust(bottom=.20)
-        st.pyplot(fig)
-        plt.close(fig)
+        render_precomputed_chart("scheduling_position_comparison.png")
         analysis_note(
             "대각선을 제외한 동일 Position 선택률은 대체로 약 10~13%로 낮고, 872개 중 849개 Block은 방법에 따라 Position이 달랐습니다. "
             "구역별 배정 비율도 방법마다 달라, Scheduling Method는 동일 입력에 대한 단순 계산 차이가 아니라 실제 공간 배치를 바꾸는 선택 규칙입니다."
@@ -3398,51 +3326,7 @@ def render_scheduling_presentation_page(subpage, data):
         st.markdown("<div class='section-kicker'>OPERATING PERFORMANCE</div>", unsafe_allow_html=True)
         st.title("운영 성과 비교")
         st.caption("Position 선택 특성, 전체 일정 범위, 지연 성과를 같은 화면에서 비교합니다.")
-        fig, axes = plt.subplots(3, 2, figsize=(14.8, 8.1), dpi=135)
-        position_by_area = data["position"].sort_values("Mean_Area_Margin_Ratio")
-        sns.barplot(data=position_by_area, x="Mean_Area_Margin_Ratio", y="Method", hue="Method", palette=METHOD_COLORS, legend=False, ax=axes[0, 0])
-        axes[0, 0].set_xlim(0.40, 0.45)
-        axes[0, 0].set_title("Mean Area Margin Ratio · 파생변수")
-        axes[0, 0].set_ylabel("")
-        initial_by_position = data["position"].sort_values("Initially_Occupied_Assignments")
-        sns.barplot(data=initial_by_position, x="Initially_Occupied_Assignments", y="Method", hue="Method", palette=METHOD_COLORS, legend=False, ax=axes[0, 1])
-        axes[0, 1].set_title("Assignments to Initial-recorded Positions · 파생변수")
-        axes[0, 1].set_ylabel("")
-        schedule_by_makespan = data["schedule"].sort_values("Makespan_Days")
-        sns.barplot(data=schedule_by_makespan, x="Makespan_Days", y="Method", hue="Method", palette=METHOD_COLORS, legend=False, ax=axes[1, 0])
-        axes[1, 0].set_title("Makespan")
-        axes[1, 0].set_xlabel("Days (Lower is Better)")
-        axes[1, 0].set_ylabel("")
-        delay_sorted = data["delay"].sort_values("Total_Delay")
-        sns.barplot(data=delay_sorted, x="Total_Delay", y="Method", hue="Method", palette=METHOD_COLORS, legend=False, ax=axes[1, 1])
-        axes[1, 1].set_title("Total Positive Delay")
-        axes[1, 1].set_xlabel("Days (Lower is Better)")
-        axes[1, 1].set_ylabel("")
-        sns.barplot(data=data["delay"].sort_values("Max_Delay"), x="Max_Delay", y="Method", hue="Method", palette=METHOD_COLORS, legend=False, ax=axes[2, 0])
-        axes[2, 0].set_title("Maximum Delay")
-        axes[2, 0].set_xlabel("Days (Lower is Better)")
-        axes[2, 0].set_ylabel("")
-        axes[2, 1].axis("off")
-        axes[2, 1].text(
-            0.0,
-            0.98,
-            "• Mean Area Margin Ratio [파생변수]\n"
-            "  Position 면적 대비 Block 배치 후 남는 공간의 평균 비율\n\n"
-            "• Initial-recorded Position Assignments [파생변수]\n"
-            "  Initial Table에 기록된 Position으로 배정된 건수\n\n"
-            "• Makespan: 전체 작업이 끝나는 데 걸린 총 기간\n"
-            "• Total Positive Delay: 지연이 발생한 일수의 합계\n"
-            "• Maximum Delay: 단일 Block에서 발생한 최대 지연",
-            transform=axes[2, 1].transAxes,
-            va="top",
-            ha="left",
-            fontsize=11,
-            linespacing=1.62,
-            color="#344054",
-        )
-        fig.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
+        render_precomputed_chart("scheduling_operating_performance.png")
         analysis_note("면적 여유와 Initial 기록 Position 배정도 방법별로 달랐습니다. EDDQN은 가장 짧은 Makespan과 최저 Max Delay, Earliest Start는 최저 Total Delay와 Delayed Blocks를 보여, 운영 목적에 따라 우선 방법이 달라집니다.")
 
     else:
@@ -3526,12 +3410,23 @@ def render_roadmap_presentation_page(subpage):
     st.markdown("<div class='section-kicker'>CALENDAR-IT INTEGRATION</div>", unsafe_allow_html=True)
     st.title("Calendar-it과 연계")
     st.caption("Block 단위의 Cycle 예측과 Scheduling 결과를 개인·팀 단위의 실행 일정으로 연결하는 확장 방향입니다.")
-    gantt_column, week_column = st.columns(2, gap="large")
-    with gantt_column:
-        st.image(ROOT / "Docs" / "images" / "gt.png", caption="간트형 전체 일정 화면", width="stretch")
+    calendar_view = st.segmented_control(
+        "Calendar-it 화면 선택",
+        ["간트형 전체 일정", "주간 작업 일정"],
+        default="간트형 전체 일정",
+        selection_mode="single",
+        key="calendar_it_view",
+        label_visibility="collapsed",
+    ) or "간트형 전체 일정"
+    _, calendar_image_column, _ = st.columns([.04, .92, .04])
+    with calendar_image_column:
+        if calendar_view == "간트형 전체 일정":
+            st.image(ROOT / "Docs" / "images" / "gt.png", caption="간트형 전체 일정 화면", width="stretch")
+        else:
+            st.image(ROOT / "Docs" / "images" / "wk.png", caption="주간 작업 일정 화면", width="stretch")
+    if calendar_view == "간트형 전체 일정":
         st.markdown("**전체 일정 관점** — 공정·Block·담당 조직의 기간을 한 화면에서 확인하고, Scheduling 결과의 계획 Start/Finish를 상위 일정에 반영합니다.")
-    with week_column:
-        st.image(ROOT / "Docs" / "images" / "wk.png", caption="주간 작업 일정 화면", width="stretch")
+    else:
         st.markdown("**실행 일정 관점** — 확정된 Block 작업을 주간 단위의 담당자·팀 업무로 전개하고, 현장 변경 사항을 다시 일정 계획에 반영합니다.")
     st.markdown(
         "#### 연계 흐름\n"
@@ -3713,28 +3608,11 @@ def render_section_companion(page, subpage, data):
         elif subpage.startswith("3.4.1"):
             feature_sets = data["feature_sets"].sort_values("RMSE")
             st.markdown("**CDA · 가설 검증** · Position·Initial 정보 추가가 **RMSE**를 낮추는지 동일 조건에서 Set A/B/C로 비교")
-            fig, ax = plt.subplots(figsize=(7.8, 3.55), dpi=180)
-            sns.barplot(
-                data=feature_sets,
-                x="RMSE",
-                y="Variable Set",
-                hue="Variable Set",
-                palette=["#034EA2", "#008C95", "#7B61A8"],
-                legend=False,
-                width=0.45,
-                ax=ax,
-            )
-            ax.set_xlim(4.3, 5.2)
-            ax.set_xlabel("RMSE (Lower is Better)", fontsize=8)
-            ax.set_ylabel("Variable Set", fontsize=8)
-            ax.tick_params(axis="both", labelsize=7.5)
-            fig.tight_layout()
             st.markdown('<div style="height:1.15rem;"></div>', unsafe_allow_html=True)
             _, chart_column, _ = st.columns([.12, .6, .28])
             with chart_column:
-                st.pyplot(fig, width="content")
+                render_precomputed_chart("regression_feature_set_rmse.png", width="content")
             st.markdown('<div style="height:.85rem;"></div>', unsafe_allow_html=True)
-            plt.close(fig)
             st.dataframe(feature_sets, hide_index=True, width="stretch")
             analysis_note(
                 "동일한 Random Forest에서 Set A가 가장 좋고 Set B/C는 오히려 낮았습니다. "
@@ -3799,16 +3677,7 @@ def render_section_companion(page, subpage, data):
                     ("R²", f"{metrics['R2']:.3f}", "Higher is better"),
                 ]
             )
-            test_comparison = test.sort_values("reference_cycle").reset_index(drop=True)
-            fig, ax = plt.subplots(figsize=(14, 4.4))
-            ax.plot(test_comparison.index, test_comparison["reference_cycle"], color=REFERENCE_COLOR, linewidth=1.8, label="Reference Cycle")
-            ax.plot(test_comparison.index, test_comparison["predicted_cycle"], color=PREDICTED_COLOR, linewidth=1.2, label="Predicted Cycle")
-            ax.set_xlabel("Test Blocks Sorted by Reference Cycle")
-            ax.set_ylabel("Block Position Cycle")
-            ax.legend()
-            fig.tight_layout()
-            st.pyplot(fig)
-            plt.close(fig)
+            render_precomputed_chart("regression_prediction_result.png")
             analysis_note(
                 "전체 중앙값 잔차는 -0.1일로 대부분의 Block에서는 예측 편향이 크지 않았습니다. "
                 "그러나 기준 Cycle이 길어질수록 과소예측이 뚜렷해졌습니다. 특히 40일 이상인 "
@@ -3820,20 +3689,7 @@ def render_section_companion(page, subpage, data):
         elif subpage.startswith("3.7.2"):
             test = data["test"]
             long_cycle = test[test["reference_cycle"] >= 40]
-            fig, axes = plt.subplots(1, 2, figsize=(12, 4.2))
-            sns.scatterplot(data=test, x="predicted_cycle", y="residual", color="#034EA2", alpha=.7, ax=axes[0])
-            axes[0].axhline(0, color="#7D8A99", linestyle="--")
-            axes[0].set_title("예측 Cycle별 잔차")
-            axes[0].set_xlabel("예측 Cycle(일)")
-            axes[0].set_ylabel("잔차(일)")
-            sns.histplot(test["residual"], kde=True, color="#2D7D8C", ax=axes[1])
-            axes[1].axvline(0, color="#7D8A99", linestyle="--")
-            axes[1].set_title("잔차 분포")
-            axes[1].set_xlabel("잔차(일)")
-            axes[1].set_ylabel("Block 수")
-            fig.tight_layout()
-            st.pyplot(fig)
-            plt.close(fig)
+            render_precomputed_chart("regression_residuals.png")
             analysis_note(
                 f"전체 중앙값 잔차는 {test['residual'].median():.1f}일로 중앙 구간의 편향은 크지 않습니다. "
                 f"반면 기준 Cycle이 40일 이상인 {len(long_cycle)}개 Block은 모두 과소예측되었고, "
@@ -3843,15 +3699,8 @@ def render_section_companion(page, subpage, data):
             )
         elif subpage.startswith("3.7.3"):
             top_n = st.slider("표시할 변수 수", 5, 20, 10, key="model_importance_top_n")
-            importance = data["importance"].nlargest(top_n, "importance")
-            fig, ax = plt.subplots(figsize=(9, max(3.7, len(importance) * .34)))
-            sns.barplot(data=importance, x="importance", y="feature", color="#034EA2", ax=ax)
-            ax.set_xlabel("Feature Importance")
-            ax.set_ylabel("Feature")
-            fig.tight_layout()
             with st.container(height=420, border=False):
-                st.pyplot(fig)
-            plt.close(fig)
+                render_precomputed_chart(f"feature_importance_{top_n}.png")
         else:
             flow_cards([("최종 입력", "Set A · Block 고유 특성"), ("최종 모델", "Random Forest"), ("Test RMSE", "4.558"), ("해석 원칙", "예측 기여 ≠ 인과효과")])
             analysis_note("Set B/C는 진단 실험으로 남기고, 실제 활용 모델은 스케줄링 전에 알 수 있는 Block 특성만 사용합니다.")
@@ -4018,9 +3867,15 @@ if "selected_page_index" not in st.session_state:
 page_index = min(st.session_state.selected_page_index, len(page_names) - 1)
 st.session_state.selected_page_index = page_index
 page = page_names[page_index]
+custom_only_pages = {
+    "2. 전처리 및 EDA",
+    "4. 스케줄링 비교",
+    "5. 최종 결론",
+    "6. 개발 로드맵",
+}
 notebook_sections = (
     {}
-    if page in {*SIMULATOR_PAGES, SUBMISSION_PAGE, COVER_PAGE, ANALYSIS_FLOW_PAGE}
+    if page in {*SIMULATOR_PAGES, SUBMISSION_PAGE, COVER_PAGE, ANALYSIS_FLOW_PAGE, *custom_only_pages}
     else load_notebook_sections(
         str(NOTEBOOK_FILES["0. Overview"] if page == DATA_STRUCTURE_PAGE else NOTEBOOK_FILES[page]),
         split_subsections=page == "3. 회귀모델",
@@ -4142,6 +3997,30 @@ for index, label in enumerate(page_names):
             st.query_params["section"] = subpage
     if index < len(page_names) - 1:
         st.sidebar.markdown('<div class="sidebar-page-divider"></div>', unsafe_allow_html=True)
+
+data_required_pages = {
+    "1. Master Table",
+    "2. 전처리 및 EDA",
+    "3. 회귀모델",
+    "4. 스케줄링 비교",
+    "5. 최종 결론",
+    CYCLE_PREDICTION_PAGE,
+    SCHEDULING_RESULT_PAGE,
+    SUBMISSION_PAGE,
+}
+data = None
+feature_sets = models = delay = schedule = comparison = None
+if page in data_required_pages:
+    try:
+        data = load_data()
+    except FileNotFoundError as error:
+        st.error(f"필요한 사전 계산 결과를 찾지 못했습니다: {error.filename}")
+        st.stop()
+    feature_sets = data["feature_sets"].sort_values("RMSE")
+    models = data["models"].sort_values("RMSE")
+    delay = data["delay"].sort_values("Total_Delay")
+    schedule = data["schedule"].sort_values("Makespan_Days")
+    comparison = schedule.merge(delay, on="Method")
 
 slide_layouts = load_slide_layouts()
 editable_slide_key = None
@@ -4581,10 +4460,10 @@ if page not in {*SIMULATOR_PAGES, SUBMISSION_PAGE} and subpage != dashboard_labe
 @st.fragment
 def render_cycle_simulator(data, mode):
     input_catalog = data["analysis"]
-    set_a_model, set_a_test = load_set_a_model()
     plot_config = {"displaylogo": False, "modeBarButtonsToRemove": ["lasso2d", "select2d"]}
 
     if mode == CYCLE_PREDICTION_PAGE:
+        set_a_model, set_a_test = load_set_a_model()
         st.subheader("스케줄링 전 Block 특성 기반 Cycle 예측")
         output = st.empty()
         input_mode = st.segmented_control(
@@ -4677,9 +4556,7 @@ def render_cycle_simulator(data, mode):
         st.session_state[result_selected_position_key] = None
         st.session_state["result_query_marker"] = result_query
     selected_profile = method_profiles[method_profiles["block_index"].eq(selected_block)].iloc[0].copy()
-    set_a_prediction = float(
-        set_a_model.predict(pd.DataFrame([selected_profile[SET_A_FEATURES]], columns=SET_A_FEATURES))[0]
-    )
+    set_a_prediction = float(selected_profile["set_a_prediction"])
     compact_metrics(
         [
             ("사전 기준 Cycle", f"{selected_profile['block_processing_cycle']:.1f}일", "Block Table 입력"),
