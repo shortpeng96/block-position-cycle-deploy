@@ -31,7 +31,7 @@ DATASET_SELECTION_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_selection_inf
 DATASET_ASSUMPTIONS_IMAGE_PATH = ROOT / "Docs" / "images" / "dataset_assumptions_infographic.png"
 ANALYSIS_FLOW_IMAGE_PATH = ROOT / "Docs" / "images" / "analysis_flow_infographic.png"
 TABLE_JOIN_STRATEGY_IMAGE_PATH = ROOT / "Docs" / "images" / "table_join_strategy_infographic.png"
-JOIN_KEY_DISCOVERY_IMAGE_PATH = ROOT / "Docs" / "images" / "join_key_validation_infographic.png"
+JOIN_KEY_DISCOVERY_IMAGE_PATH = ROOT / "Docs" / "images" / "join_key_validation_infographic_gray.png"
 MASTER_TABLE_ERD_PATH = ROOT / "Docs" / "images" / "1_master_table_join_erd.svg"
 SHIP_BLOCK_PLAN_IMAGE_PATH = ROOT / "Docs" / "images" / "ship_block_plan_clear.png"
 FEATURE_SET_EXPANSION_IMAGE_PATH = ROOT / "presentation_assets" / "feature_set_expansion_infographic.png"
@@ -1237,11 +1237,11 @@ def render_join_key_discovery():
                 <div style="color:#667085;font-size:13px;line-height:1.65;">README에 명확한 조인키가 없었다. 따라서 같은 이름의 열을 바로 연결하지 않고, <b>① 테이블 안에서 유일한 값인가 ② 양쪽 값의 집합이 같은가 ③ 조인 후 다른 식별값도 일치하는가 ④ 실제로 같은 대상을 뜻하는가</b>를 순서대로 확인했다.</div>
             </div>
             <div style="border-top:2px solid #034EA2;">
-                <div style="padding:.7rem 0;border-bottom:1px solid #E7EBF2;"><b style="color:#B42318;">01 · 제외: block no.</b><br><span style="color:#475467;">Block과 Result에 공통으로 보이지만 고유값이 97개뿐이다. 872개 Block을 하나씩 식별할 수 없어 단독 조인키로 사용할 수 없었다.</span></div>
+                <div style="padding:.7rem 0;border-bottom:1px solid #E7EBF2;"><b style="color:#4B5563;">01 · 제외: block no.</b><br><span style="color:#475467;">Block과 Result에 공통으로 보이지만 고유값이 97개뿐이다. 872개 Block을 하나씩 식별할 수 없어 단독 조인키로 사용할 수 없었다.</span></div>
                 <div style="padding:.7rem 0;border-bottom:1px solid #E7EBF2;"><b style="color:#034EA2;">02 · 채택: index ↔ block sequence no.</b><br><span style="color:#475467;">양쪽 모두 872개 고유값을 가지며 값의 집합도 같다. 이 키로 결합한 뒤 양쪽 <code>block no.</code>가 100% 일치해 Block–Result 1:1 연결을 확정했다.</span></div>
                 <div style="padding:.7rem 0;border-bottom:1px solid #E7EBF2;"><b style="color:#034EA2;">03 · 채택: block position id</b><br><span style="color:#475467;">Result의 모든 Position ID가 Position table에 존재하고, 조인 후 Position 설명도 100% 일치했다. 여러 Block이 하나의 Position을 참조하는 Result 기준 N:1 관계다.</span></div>
                 <div style="padding:.7rem 0;border-bottom:1px solid #E7EBF2;"><b style="color:#034EA2;">04 · 선택적 연결: Position description ↔ Initial description</b><br><span style="color:#475467;">Position 66개 중 11개만 Initial 기록과 일치했다. 일치 여부는 <code>initially_occupied</code>로 만들되, Initial을 현재 Block의 직접 속성으로 해석하지 않았다.</span></div>
-                <div style="padding:.7rem 0;"><b style="color:#B42318;">05 · 제외: ship no. + block no.</b><br><span style="color:#475467;">각 테이블 내부에서는 복합키 후보였지만 Initial–Block 실제 매칭률은 0%였다. Initial은 시작 시점에 이미 작업 중인 별도 Block으로 보고 Position을 경유해 활용했다.</span></div>
+                <div style="padding:.7rem 0;"><b style="color:#4B5563;">05 · 제외: ship no. + block no.</b><br><span style="color:#475467;">각 테이블 내부에서는 복합키 후보였지만 Initial–Block 실제 매칭률은 0%였다. Initial은 시작 시점에 이미 작업 중인 별도 Block으로 보고 Position을 경유해 활용했다.</span></div>
             </div>
             """,
             unsafe_allow_html=True,
