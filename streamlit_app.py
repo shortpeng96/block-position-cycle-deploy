@@ -8,6 +8,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from PIL import Image
+from matplotlib import font_manager
 from matplotlib.colors import LinearSegmentedColormap
 import joblib
 import numpy as np
@@ -417,10 +418,19 @@ YARD_AREA_FILLS = {
 CORRELATION_CMAP = LinearSegmentedColormap.from_list(
     "gray_white_blue", ["#6F7782", "#FFFFFF", "#034EA2"]
 )
+AVAILABLE_MATPLOTLIB_FONTS = {font.name for font in font_manager.fontManager.ttflist}
+CHART_FONT_FAMILY = next(
+    (
+        font_name
+        for font_name in ["Malgun Gothic", "Noto Sans CJK KR", "Noto Sans CJK JP", "NanumGothic"]
+        if font_name in AVAILABLE_MATPLOTLIB_FONTS
+    ),
+    "DejaVu Sans",
+)
 sns.set_theme(style="whitegrid", palette=DASHBOARD_PALETTE)
 plt.rcParams.update(
     {
-        "font.family": ["Malgun Gothic", "Noto Sans CJK KR", "DejaVu Sans"],
+        "font.family": CHART_FONT_FAMILY,
         "font.size": 10.5,
         "axes.unicode_minus": False,
         "axes.edgecolor": "#D8DEE9",
