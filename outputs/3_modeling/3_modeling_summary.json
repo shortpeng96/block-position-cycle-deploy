@@ -1,0 +1,16 @@
+{
+  "representative_model": "Random Forest",
+  "final_variable_set": "Set A - Block",
+  "final_model": "Random Forest",
+  "feature_role": "pre-scheduling Block intrinsic features only",
+  "best_params": {
+    "model__max_depth": null,
+    "model__min_samples_leaf": 1,
+    "model__n_estimators": 100
+  },
+  "test_metrics": {
+    "MAE": 3.0021676190476194,
+    "RMSE": 4.5578226968447355,
+    "R2": 0.7670384757252314
+  }
+}

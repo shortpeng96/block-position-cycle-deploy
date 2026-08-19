@@ -1,0 +1,8 @@
+.git
+.venv
+.venv_python314_install_failed_20260819
+__pycache__
+*.py[cod]
+.pytest_cache
+.streamlit/secrets.toml
+*.zip

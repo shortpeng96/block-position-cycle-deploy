@@ -1,0 +1,52 @@
+{
+  "target": "block_processing_cycle",
+  "set_a": [
+    "block_ship_no",
+    "block_type",
+    "block_length",
+    "block_width",
+    "block_weight",
+    "block_area",
+    "season",
+    "block_start_window"
+  ],
+  "set_b": [
+    "block_ship_no",
+    "block_type",
+    "block_length",
+    "block_width",
+    "block_weight",
+    "block_area",
+    "season",
+    "block_start_window",
+    "position_primary_area",
+    "position_secondary_area",
+    "position_lifting_capacity",
+    "position_labor_team",
+    "position_block_type",
+    "position_attribute",
+    "position_area",
+    "area_margin_ratio",
+    "lifting_load_ratio"
+  ],
+  "set_c": [
+    "block_ship_no",
+    "block_type",
+    "block_length",
+    "block_width",
+    "block_weight",
+    "block_area",
+    "season",
+    "block_start_window",
+    "position_primary_area",
+    "position_secondary_area",
+    "position_lifting_capacity",
+    "position_labor_team",
+    "position_block_type",
+    "position_attribute",
+    "position_area",
+    "area_margin_ratio",
+    "lifting_load_ratio",
+    "initially_occupied"
+  ]
+}

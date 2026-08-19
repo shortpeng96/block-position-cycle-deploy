@@ -1,0 +1,147 @@
+﻿source_text,english_text
+序号,index
+船号,ship no.
+分段号,block no.
+分段类型,block type
+长,length
+宽,width
+分段重量,block weight
+上胎日期,on-position date
+最早开工时间,earliest start time
+最晚开工时间,latest start time
+胎位周期,block position cycle
+分段产出,block output
+是否组合,is combined
+组合分段,combined block
+平,flat
+曲,curved
+船型,vessel type
+胎位描述,block position description
+预期完工时间,expected completion time
+48北-1,48 North-1
+48北-2,48 North-2
+48北-3,48 North-3
+48北-4,48 North-4
+48北-5,48 North-5
+48北-6,48 North-6
+48北-7,48 North-7
+48北-8,48 North-8
+48北-9,48 North-9
+48南-1,48 South-1
+48南-2,48 South-2
+48南-3,48 South-3
+48南-4,48 South-4
+48南-5,48 South-5
+48南-6,48 South-6
+48南-7,48 South-7
+48南-8,48 South-8
+48南-9,48 South-9
+48南-10,48 South-10
+45北-1,45 North-1
+45北-2,45 North-2
+45北-3,45 North-3
+45北-4,45 North-4
+45北-5,45 North-5
+45北-6,45 North-6
+45北-7,45 North-7
+45南-1,45 South-1
+45南-2,45 South-2
+45南-3,45 South-3
+45南-4,45 South-4
+45南-5,45 South-5
+45南-6,45 South-6
+45南-7,45 South-7
+42南-1,42 South-1
+42南-2,42 South-2
+一级区域,primary area
+二级区域,secondary area
+胎位编号,block position id
+尺寸,size
+起重能力(T),lifting capacity (T)
+高度限制(M),height limit (M)
+劳务队,labor team
+指定分段,designated block
+属性,attribute
+列1,column1
+曲面,curved surface
+48米,48m
+定置,fixed
+通用,general
+45米,45m
+42米,42m
+平台一,platform 1
+0号平台,No.0 platform
+0号西-1,No.0 West-1
+0号西-3,No.0 West-3
+0号西-5,No.0 West-5
+0号西-7,No.0 West-7
+0号东-2,No.0 East-2
+0号东-4,No.0 East-4
+0号东-6,No.0 East-6
+0号东-8,No.0 East-8
+0号东-10,No.0 East-10
+0号东-12,No.0 East-12
+0号东-14,No.0 East-14
+0号东-16,No.0 East-16
+0号东-18,No.0 East-18
+0号东-20,No.0 East-20
+10号平台,No.10 platform
+10号南-1,No.10 South-1
+外场ZH,yard ZH
+10号南-3,No.10 South-3
+10号南-5,No.10 South-5
+10号南-7,No.10 South-7
+10号南-9,No.10 South-9
+10号南-11,No.10 South-11
+10号南-13,No.10 South-13
+10号南-15,No.10 South-15
+外场HN,yard HN
+10号南-17,No.10 South-17
+10号南-19,No.10 South-19
+10号南-21,No.10 South-21
+10号南-23,No.10 South-23
+10号南-25,No.10 South-25
+10号北-2,No.10 North-2
+10号北-4,No.10 North-4
+10号北-6,No.10 North-6
+10号北-8,No.10 North-8
+10号北-10,No.10 North-10
+10号北-12,No.10 North-12
+10号北-14,No.10 North-14
+10号北-16,No.10 North-16
+10号北-18,No.10 North-18
+10号北-20,No.10 North-20
+10号北-22,No.10 North-22
+10号北-24,No.10 North-24
+分段总组,block assembly group
+8号平台,No.8 platform
+8号南-1,No.8 South-1
+8号南-3,No.8 South-3
+8号南-5,No.8 South-5
+8号南-7,No.8 South-7
+8号南-13,No.8 South-13
+8号南-15,No.8 South-15
+8号南-17,No.8 South-17
+8号南-19,No.8 South-19
+8号南-21,No.8 South-21
+8号北-14,No.8 North-14
+8号北-16,No.8 North-16
+8号北-18,No.8 North-18
+8号北-22,No.8 North-22
+8号北-24,No.8 North-24
+8号北-26,No.8 North-26
+机动,flexible
+8号北-28,No.8 North-28
+胎位长,block position length
+胎位宽,block position width
+分段序号,block sequence no.
+分段长,block length
+分段宽,block width
+分段加工时间,block processing time
+分段产值,block output value
+计划开始时间,planned start time
+计划结束时间,planned finish time
+最晚完工时间,latest completion time
+延期天数,delay days
+提前天数,advance days
+正常提前天数,normal advance days

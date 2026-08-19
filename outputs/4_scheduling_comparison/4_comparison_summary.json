@@ -1,0 +1,10 @@
+{
+  "comparison_unit": "precomputed Scheduling Result",
+  "blocks": 872,
+  "blocks_with_different_positions": 849,
+  "best_makespan_method": "EDDQN",
+  "lowest_makespan_days": 1529,
+  "best_total_delay_method": "Earliest Start",
+  "lowest_total_delay": 57827.0,
+  "lowest_max_delay_method": "EDDQN"
+}
