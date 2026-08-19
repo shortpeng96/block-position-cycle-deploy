@@ -2737,6 +2737,7 @@ def build_position_gantt(schedule, position_catalog, method, selected_block, gan
     return figure
 
 
+@st.cache_data(show_spinner=False)
 def load_notebook_sections(notebook_path, split_subsections=False):
     notebook = json.loads(Path(notebook_path).read_text(encoding="utf-8"))
     markdown = "\n\n".join(
