@@ -1946,7 +1946,7 @@ def render_eda_feature_sets(data):
     left, right = st.columns([1.22, .78], gap="large")
     with left:
         st.markdown("#### 종속변수 및 Feature Set 정의")
-        with st.container(height=455, border=False):
+        with st.container(height=760, border=False):
             st.code(
                 """# ============================================================
 # 종속변수 및 Feature Set 정의
@@ -2029,7 +2029,7 @@ for name, columns in feature_sets.items():
             )
     with right:
         st.markdown("#### 최종 분석용 데이터 구성")
-        with st.container(height=455, border=False):
+        with st.container(height=760, border=False):
             st.code(
                 """# ============================================================
 # 최종 분석용 데이터 구성
