@@ -420,7 +420,7 @@ CORRELATION_CMAP = LinearSegmentedColormap.from_list(
 sns.set_theme(style="whitegrid", palette=DASHBOARD_PALETTE)
 plt.rcParams.update(
     {
-        "font.family": "Malgun Gothic",
+        "font.family": ["Malgun Gothic", "Noto Sans CJK KR", "DejaVu Sans"],
         "font.size": 10.5,
         "axes.unicode_minus": False,
         "axes.edgecolor": "#D8DEE9",
