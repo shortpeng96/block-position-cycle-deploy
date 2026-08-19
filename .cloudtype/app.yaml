@@ -7,6 +7,6 @@ options:
 
 context:
   git:
-    url: https://github.com/BigYard-labs/block-position-cycle-project.git
+    url: git@github.com:shortpeng96/block-position-cycle-deploy.git
     branch: main
   preset: dockerfile
