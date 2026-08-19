@@ -1,6 +1,13 @@
 name: block-position-cycle-presentation
 app: dockerfile
 
+resources:
+  spot: true
+  cpu: 0
+  memory: 1
+  disk: 0
+  replicas: 1
+
 options:
   ports: 8501
   dockerfile: Dockerfile
